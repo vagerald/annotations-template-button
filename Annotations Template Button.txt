@@ -1,0 +1,107 @@
+// ==UserScript==
+// @name         Annotations Template Button
+// @namespace    http://tampermonkey.net/
+// @version      0.6
+// @description  Adds a button to insert text template for case annotations on Paragon page
+// @author       @vagerald
+// @match        https://paragon-na.amazon.com/hz/view-case*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=amazon.com
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    function createButton() {
+        const annotateButton = document.querySelector('[data-csm-name="add-annotation-composer-v2"]');
+        if (!annotateButton) {
+            console.log('Annotate button not found');
+            return;
+        }
+
+        // Check if the button already exists
+        if (document.querySelector('#notesTemplateButton')) {
+            return;
+        }
+
+        // Create the new button
+        const button = document.createElement('button');
+        button.id = 'notesTemplateButton';
+        button.innerText = 'Annotations Template';
+        button.style.position = 'relative';
+        button.style.marginLeft = '10px';
+        button.style.zIndex = '1000';
+        button.style.padding = '10px';
+        button.style.backgroundColor = '#008296';
+        button.style.color = 'white';
+        button.style.border = 'none';
+        button.style.borderRadius = '5px';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0px 0px 5px rgba(0, 0, 0, 0.3)';
+
+        // Insert the new button after the annotate button
+        annotateButton.parentNode.insertBefore(button, annotateButton.nextSibling);
+
+        // Add event listener to the button
+        button.addEventListener('click', function() {
+            annotateButton.click();
+            setTimeout(() => waitForAnnotationBox(), 500); // Increased delay before searching for textarea
+        });
+    }
+
+    function waitForAnnotationBox() {
+        let attempts = 0;
+        const maxAttempts = 40; // Increased maximum number of attempts
+
+        const checkForTextarea = setInterval(() => {
+            attempts++;
+
+            // Try multiple possible selectors
+            const annotationBox = document.querySelector('textarea[id^="katal-id-"]');
+                                  //document.querySelector('kat-textarea textarea') ||
+                                  //document.querySelector('[aria-label="Annotation text"]') ||
+                                  //document.querySelector('textarea[data-test-id*="annotation"]');
+
+            if (annotationBox) {
+                clearInterval(checkForTextarea);
+                insertTextIntoAnnotationBox(annotationBox);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkForTextarea);
+                console.log('Failed to find annotation textarea after multiple attempts');
+            }
+        }, 250); // Check every 250ms
+    }
+
+    function insertTextIntoAnnotationBox(textbox) {
+        const textToInsert = `SOP, Blurb or Documentation Link(s): N/A\nSlack Link: N/A\nSteps Followed: N/A\nFindings/Notes: N/A\nEscalation Phase: N/A\nNext Steps: N/A\nReason for Transfer & SOP Reference: N/A`;
+        textbox.value = textToInsert;
+
+        // Trigger input event to ensure the change is registered
+        const inputEvent = new Event('input', { bubbles: true });
+        textbox.dispatchEvent(inputEvent);
+
+        // Focus on the textarea
+        textbox.focus();
+    }
+
+    function initializeScript() {
+        let attempts = 0;
+        const maxAttempts = 40; // Increased maximum number of attempts
+
+        const intervalId = setInterval(() => {
+            attempts++;
+            createButton();
+
+            if (document.querySelector('#notesTemplateButton') || attempts >= maxAttempts) {
+                clearInterval(intervalId);
+            }
+        }, 500);
+    }
+
+    // Initialize the script when the page is ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initializeScript();
+    } else {
+        window.addEventListener('load', initializeScript);
+    }
+})();
